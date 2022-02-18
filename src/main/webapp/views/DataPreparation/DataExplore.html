@@ -1,0 +1,570 @@
+<!--
+  데이터 탐험 Pandas Profiler & SweetViz 실행 결과 화면
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iframe</title>
+  <script src="../../asserts/jquery/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css">
+  <style>
+    
+  </style>
+  <script type="module">
+    selectDataExplorer(getParameterByName('page'), getParameterByName('group_id'), getParameterByName('columns'));
+
+    // Pandas Profiler or SweetViz 호출 함수
+    function selectDataExplorer(page, group_id, columns){
+      page = page.replace(/ /g, "_").toLowerCase();
+
+      console.log(`[EDA] columns = ${columns}`);
+
+      var param = {
+        "group_id": group_id,
+        "columns": columns.split(",")
+      };
+
+      $.ajax({
+        url: `http://localhost:1234/explorer/${page}`,
+        data: JSON.stringify(param),
+        method: "POST",
+        contentType: "application/json; charset=utf-8",
+        dataType: "json"
+      })
+      .done(function (result) {
+        if (page == "pandas_profiler") {
+          $("#explore-result").html( result + getCommonCSS() + getPandasCSS() + getPandasJS() );
+          $("#explore-result").html( changePandasEngToKor($("#explore-result").html()) );
+        } else if (page == "sweetviz") {
+          // $("#explore-result").html( result );
+
+          $("#explore-result").html( result + getCommonCSS() + getSweetvizCSS() + getSweetvizJS() );
+          initSweetviz();
+        }        
+      })
+      .fail(function(xhr, status, errorThrown) {
+        console.log("오류가 발생하였습니다.");
+        console.log("오류명: " + errorThrown);
+        console.log("상태: " + status);
+      })
+      .always(function(xhr, status) {
+        console.log(`${page} 요청이 완료되었습니다`);
+        window.parent.postMessage('finished', '*'); // 메시지 전송
+      });
+    }
+
+    // 전송된 parameter를 가져오는 함수
+    function getParameterByName(name) { 
+      name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]"); 
+      var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"), results = regex.exec(location.search); 
+      
+      return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " ")); 
+    }
+
+    function getCommonCSS() {
+      return `
+        <style>
+          #explore-result * {
+            font-family: 'Poppins', sans-serif;
+          }
+        <\/style>
+      `;
+    }
+
+    function getPandasCSS() {
+      return `
+        <style>
+          .container {
+            width: 98%;
+          }
+
+          code { 
+            display: inline-block;
+          }
+
+          body {
+            padding-top: 60px;
+          }
+
+          a {
+            color: rgb(62, 164, 164);
+          }
+
+          p.h4 {
+            font-weight: bold;
+          }
+
+          .indent {
+            margin-top: 10px;
+            margin-left: 0;
+            font-size: 18.72px;
+            font-weight: bold;
+          }
+
+          #explore-result nav.navbar {
+            margin-bottom: 0;
+          }
+
+          #explore-result .row.header {
+            padding-left: 1em;
+            margin-top: 20px;
+            background: #f7f7f7;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+          }
+
+          #explore-result h1.page-header {
+            padding: 0;
+            margin: 15px 0;
+            font-size: 18.72px;
+            font-weight: bold;
+          }
+
+          #explore-result .nav-pills > li > a {
+            height: 40px;
+          }
+
+          #explore-result .nav-pills > li.active > a {
+            background: rgb(62, 164, 164);
+          }
+
+          #explore-result #overview-dataset_overview,
+          #explore-result #overview-alerts,
+          #explore-result #overview-reproduction {
+            padding-top: 20px;
+          }
+
+          #explore-result .tab-content .tab-pane.active {
+            border: 1px solid #e1e1e8;
+          }
+
+          #explore-result .content .container .section-items .row.spacing {
+            padding: 1em;
+          }
+
+          #explore-result #sample-container, 
+          #explore-result #duplicate-container {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 0;
+          }
+
+          #explore-result #sample-container table,
+          #explore-result #duplicate-container table,
+          #explore-result #sample-container table th,
+          #explore-result #duplicate-container table th {
+            margin: 0;
+            text-align: center;
+          }
+
+          #explore-result .nav-tabs > li {
+            margin-bottom: -2px;
+          }
+
+          #explore-result .nav-tabs > li.active > a {
+            border: 0;
+            background: rgb(62, 164, 164);
+            color: #fff;
+          }
+        </style>
+      `;
+    }
+
+    function getPandasJS() {
+      return `
+        <script>
+          $('a[href="#top"]').text('판다스 프로파일링 보고서');
+
+          $('a[href="#overview"]').text('소개');
+          $('a[href="#variables"]').text('변수');
+          $('a[href="#missing"]').text('누락 데이터');
+          $('a[href="#sample"]').text('샘플');
+          $('a[href="#duplicate"]').text('중복 행');
+          $('a[href="#overview-dataset_overview"]').text('소개');
+          $('a[href="#overview-reproduction"]').text('복제');
+          $('a[href="#missing-bar"]').text('갯수');
+          $('a[href="#missing-matrix"]').text('매트릭스');
+          $('a[href="#missing-heatmap"]').text('히트 맵');
+          $('a[href="#missing-dendrogram"]').text('계통도');
+
+          $('#overview + h1.page-header').text('소개');
+          $('#variables + h1.page-header').text('변수');
+          $('#missing + h1.page-header').text('누락 데이터');
+          $('#sample + h1.page-header').text('샘플');
+          $('#duplicate + h1.page-header').text('중복 행');
+
+          $('a[href="#overview-alerts"]').each(function (index, item) {
+            item.innerHTML = item.textContent.includes("Alerts") ? item.innerHTML.replace(/Alerts/g, "알림") : item.innerHTML;
+          });
+
+          $('p.h4').each(function (index, item) {
+            switch (item.textContent) {
+              case 'Reproduction':
+                item.textContent = '복제';
+                break;
+              case 'Alerts':
+                item.textContent = '알림';
+                break;
+              case 'Length':
+                item.textContent = '길이';
+                break;
+              case 'Characters and Unicode':
+                item.textContent = '문자 및 유니코드';
+                break;
+              case 'Unique':
+                item.textContent = '유일치';
+                break;
+              case 'Sample':
+                item.textContent = '샘플';
+                break;
+              case 'Common Values':
+                item.textContent = '공통 값';
+                break;
+              default:
+            }
+          });
+
+          $('h4').each(function (index, item) {
+            switch (item.textContent) {
+              case 'Length':
+                item.textContent = '길이';
+                break;
+              case 'Common Values':
+                item.textContent = '공통 값';
+                break;
+              default:
+            }
+          });
+
+          $('table th').each(function (index, item) {
+            switch (item.textContent) {
+              case 'Duration':
+                item.textContent = '기간';
+                break;
+              case 'Memory size':
+                item.textContent = '메모리 크기';
+                break;
+              case 'Max length':
+                item.textContent = '최대 길이';
+                break;
+              case 'Median length':
+                item.textContent = '중간 길이';
+                break;
+              case 'Mean length':
+                item.textContent = '평균 길이';
+                break;
+              case 'Min length':
+                item.textContent = '최소 길이';
+                break;
+              case 'Total characters':
+                item.textContent = '총 문자';
+                break;
+              case 'Unique':
+                item.textContent = '유일치';
+                break;
+              case '# duplicates':
+                item.textContent = '# 중복';
+                break;
+              default:
+            }
+
+            item.textContent = item.textContent.includes("Distinct") ? item.textContent.replace(/Distinct/g, "고정치") : item.textContent;
+            item.textContent = item.textContent.includes("Missing") ? item.textContent.replace(/Missing/g, "누락치") : item.textContent;
+            item.textContent = item.textContent.includes("characters") ? item.textContent.replace(/characters/g, "문자") : item.textContent;
+            item.textContent = item.textContent.includes("categories") ? item.textContent.replace(/categories/g, "범주") : item.textContent;
+            item.textContent = item.textContent.includes("scripts") ? item.textContent.replace(/scripts/g, "스크립트") : item.textContent;
+            item.textContent = item.textContent.includes("blocks") ? item.textContent.replace(/blocks/g, "블럭") : item.textContent;
+            item.textContent = item.textContent.includes("Unique") ? item.textContent.replace(/Unique/g, "유일치") : item.textContent;
+            item.textContent = item.textContent.includes("Duplicate rows") ? item.textContent.replace(/Duplicate rows/g, "중복 줄수") : item.textContent;
+            item.textContent = item.textContent.includes("st row") ? item.textContent.replace(/st row/g, "번째 줄") : item.textContent;
+            item.textContent = item.textContent.includes("nd row") ? item.textContent.replace(/nd row/g, "번째 줄") : item.textContent;
+            item.textContent = item.textContent.includes("rd row") ? item.textContent.replace(/rd row/g, "번째 줄") : item.textContent;
+            item.textContent = item.textContent.includes("th row") ? item.textContent.replace(/th row/g, "번째 줄") : item.textContent;
+            item.textContent = item.textContent.includes("row") ? item.textContent.replace(/row/g, "줄") : item.textContent;
+            item.textContent = item.textContent.includes("Other values") ? item.textContent.replace(/Other values/g, "기타 값") : item.textContent;
+          });
+
+          $('table td').each(function (index, item) {
+            let strCheckTarget = item.textContent;
+            if (strCheckTarget.includes("seconds")) {
+              item.textContent = strCheckTarget.replace(/seconds/g, "초");
+            } else if (strCheckTarget.includes("second")) {
+              item.textContent = strCheckTarget.replace(/second/g, "초");
+            } else if (strCheckTarget.includes(" has")) {
+              item.textContent = strCheckTarget.replace(/ has/g, " ");
+            } else if (strCheckTarget.includes("date")) {
+              item.textContent = strCheckTarget.replace(/date/g, "");
+            }
+
+            item.innerHTML = item.textContent.includes("Duplicates") ? item.innerHTML.replace(/Duplicates/g, "중복") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("High cardinality") ? item.innerHTML.replace(/High cardinality/g, "높은 카디널리티") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("Missing") ? item.innerHTML.replace(/Missing/g, "누락") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("Uniform") ? item.innerHTML.replace(/Uniform/g, "균일") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("Dataset") ? item.innerHTML.replace(/Dataset/g, "데이터셋") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("Value") ? item.innerHTML.replace(/Value/g, "값") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("Count") ? item.innerHTML.replace(/Count/g, "갯수") : item.innerHTML;
+            item.innerHTML = item.textContent.includes("Frequency") ? item.innerHTML.replace(/Frequency/g, "빈도") : item.innerHTML;
+          });
+
+          $('table tr.other td').each(function (index, item) {
+            item.textContent = item.textContent.includes("Other values") ? item.textContent.replace(/Other values/g, "기타 값") : item.textContent;
+          });
+
+          $('button.btn').each(function (index, item) {
+            switch (item.textContent) {
+              case 'Toggle details':
+                item.textContent = '상세보기';
+                break;
+              default:
+            }
+          });
+
+          $('li[role="presentation"] > a').each(function (index, item) {
+            switch (item.textContent) {
+              case 'Overview':
+                item.textContent = '개요';
+                break;
+              case 'Categories':
+                item.textContent = '범주';
+                break;
+              case 'Words':
+                item.textContent = '단어';
+                break;
+              case 'Characters':
+                item.textContent = '문자';
+                break;
+              case 'Scripts':
+                item.textContent = '스크립트';
+                break;
+              case 'Blocks':
+                item.textContent = '블록';
+                break;
+              default:
+            }
+          });
+
+          $('code').each(function (index, item) {
+            item.textContent = item.textContent.includes("HIGH CARDINALITY") ? item.textContent.replace(/HIGH CARDINALITY/g,
+              "높은 카디널리티") : item.textContent;
+            item.textContent = item.textContent.includes("MISSING") ? item.textContent.replace(/MISSING/g, "누락") : item
+              .textContent;
+            item.textContent = item.textContent.includes("UNIFORM") ? item.textContent.replace(/UNIFORM/g, "균일") : item
+              .textContent;
+          });
+
+          $('p').each(function (index, item) {
+            item.textContent = item.textContent.includes("Report generated with") && item.textContent.includes(
+              "pandas-profiling") ? "판다스 프로파일링으로 생성된 보고서입니다." : item.textContent;
+          });
+
+          $('#explore-result .tab-content').each(function (index, item) {
+            item.style.padding = '0';
+          }); 
+        <\/script>
+      `;
+    }
+
+    function changePandasEngToKor(result) {
+      var changeText = {
+        "Dataset statistics" : "데이터셋 통계"
+        , "Number of variables" : "변수 개수"
+        , "Number of observations" : "관찰 횟수"
+        , "Missing cells" : "누락 셀"
+        , "Duplicate rows" : "중복 행"
+        , "Total size in memory" : "메모리 총 크기"
+        , "Average record size in memory" : "메모리 평균 크기"
+        , "Variable types" : "변수 유형"
+        , "Categorical" : "범주형 데이터"
+        , " a high cardinality" : "에는 높은 카디널리티가 있습니다"
+        , " distinct values" : " 개의 고유 값"
+        , " missing values " : " 누락 데이터"
+        , " is uniformly distributed " : "는 균일하게 분포되어 있습니다."
+        , "Analysis started" : "분석 시작 시간"
+        , "Analysis finished" : "분석 종료 시간"
+        , "Software version" : "소프트웨어 버전"
+        , "Download configuration" : "구성 다운로드"
+        , "Most occurring characters" : "가장 많이 나오는 문자"
+        , "No values found." : "값을 찾을 수 없습니다."
+        , "The Unicode Standard assigns character properties to each code point, which can be used to analyse textual variables." : "유니코드 표준은 텍스트 변수를 분석하는 데 사용할 수 있는 각 코드 포인트에 문자 속성을 할당합니다."
+        , "Histogram of lengths of the category" : "범주 길이의 히스토그램"
+        , "Most occurring categories" : "가장 많이 발생하는 카테고리"
+        , "Most frequent character per category" : "카테고리별 가장 자주 등장하는 문자"
+        , "Most occurring scripts" : "가장 많이 발생하는 스크립트"
+        , "Most frequent character per script" : "스크립트당 가장 자주 사용되는 문자"
+        , "Most occurring blocks" : "가장 많이 발생하는 블록"
+        , "Most frequent character per block" : "블록당 가장 빈번한 문자"
+        , "A simple visualization of nullity by column." : "열에 의한 무효화가 된 것의 간단한 시각화."
+        , "Most frequently occurring" : "가장 자주 발생하는 것"
+        , "First rows" : "첫 번째 행"
+        , "Last rows" : "마지막 행"
+        , "Nullity matrix is a data-dense display which lets you quickly visually pick out patterns in data completion." :
+        "무효화 된 행렬은 데이터 완성 시 패턴을 시각적으로 빠르게 선택할 수 있는 데이터 밀도 디스플레이입니다."
+        , "The correlation heatmap measures nullity correlation: how strongly the presence or absence of one variable affects the presence of another." : "상관 히트맵은 무효 상관 관계를 측정합니다. 즉, 한 변수의 존재 여부가 다른 변수의 존재에 미치는 영향입니다."
+        , "The dendrogram allows you to more fully correlate variable completion, revealing trends deeper than the pairwise ones visible in the correlation heatmap." : "덴드로그램을 사용하면 변수 완성의 상관 관계를 보다 완벽하게 파악할 수 있으므로 상관 관계 히트맵에서 볼 수 있는 쌍으로 보이는 트렌드보다 더 깊은 트렌드를 드러낼 수 있습니다."
+      };
+
+      for (let key in changeText) {
+        var regexp = new RegExp(key, "gi");
+        result = result.replace(regexp, changeText[key]);
+      }
+
+      return result;
+    }
+    
+    function getSweetvizCSS() {
+      return `
+        <style>
+          body {
+            background: #fff;
+          }
+
+          /* 맨 위에 출력되는 SweetVIZ 로그 없애기 */
+          .pos-logo-group {
+            display: none;
+          }
+
+          /* DataFrame 박스에 들어 있는 "NO COMPARISON TARGET" 글자를 왼쪽으로 이동시킨다. */
+          #summary-df .pos-dataframe-summary-title-compare-none.text-dataframe-title-small.color-title-disabled {
+            left: 320px;
+          }
+
+          /* 맨 위에 출력되는 DataFrame 박스를 왼쪽으로 옮기기 */
+          #summary-df {
+            left: -370px;
+          }
+
+          
+        </style>
+      `;
+      /*
+      
+
+     
+
+      .page-all-summaries {
+      top: 5px;
+      background: transparent;
+      }
+
+      .page-all-summaries .summary-number {
+      color: #999;
+      }
+
+      .page-all-summaries .pos-feature-summary .base-stats-row {
+      height: 20px;
+      margin-bottom: 5px;
+      }
+
+      .page-all-summaries .pos-feature-summary .base-stats-row > div {
+      font-size: 13px;
+      font-weight: bold;
+      }
+
+      .page-all-summaries .pos-feature-summary .pos-summary-text > div {
+      height: 15px;
+      line-height: 15px;
+      font-size: 13px;
+      font-weight: bold;
+      }
+
+      .bg-tab-summary-rollover-locked {
+      content: "";
+      }
+
+      .container-feature-detail__offset .pos-detail-tab-icon-text__offset {
+      top: 30px;
+      }
+
+      .container-feature-detail__offset .pos-base-stats-in-detail {
+      top: 100px;
+      height: 15px;
+      line-height: 15px;
+      font-size: 13px;
+      font-weight: bold;
+      }
+
+      .container-feature-detail__offset .pos-detail-text {
+      top: 120px;
+      }
+
+      .container-feature-detail__offset .pos-detail-text > div {
+      height: 15px;
+      line-height: 15px;
+      font-size: 13px;
+      font-weight: bold;
+      }
+
+      .text-title-tab {
+      font-size: 1rem;
+      font-weight: bold;
+      }
+      // 우측 상세정보 높이
+      .bg-tab-detail-wide {
+      height: 950px;
+      }
+      */
+    }
+
+    function getSweetvizJS() {
+      return `
+        <script>
+          // dafafrme 설명바를 오른쪽으로 옮기기
+          $(".graph-legend").css("left", "660px");
+
+          $('.pos-base-stats .text-label.color-normal.pos-base-stats__label').each(function (index, item) {
+            item.textContent = item.textContent == "VALUES:" ? "값:" : item.textContent;
+            item.textContent = item.textContent == "MISSING:" ? "누락치:" : item.textContent;
+            item.textContent = item.textContent == "DISTINCT:" ? "고정치:" : item.textContent;
+          });
+
+          
+
+          
+        <\/script>
+      `;
+    }
+    /*
+    $('div.summary-text').each(function (index, item) {
+    item.textContent = item.textContent.trim() == "(Other)" ? "(기타):" : item.textContent;
+    });
+
+
+    // 왼쪽에 출력되는 탭 사이의 세로 간격
+    // let increase = 0;
+    // $('.pos-feature-summary').each(function (index, item) {
+    // $(item).css('top', increase.toString() + 'px');
+    // increase += 50;
+    // });
+    */
+
+    function initSweetviz() {
+      // SweetVIZ 조회 시, 맨 처음 "Associations" 정보를 출력한다.
+      setTimeout(function() {
+        $("#button-summary-associations-source").trigger("click");
+        let df_assoc_source = document.querySelector("#df-assoc-source");
+        df_assoc_source.style.display = 'block';
+      }, 1000); // 1000ms(1초)가 경과하면 이 함수가 실행됩니다.
+
+      let explore_result = document.querySelector('#explore-result');
+      console.log(`윈도우 가로 사이즈 : ${explore_result.clientWidth}`);
+
+      // if (explore_result.clientWidth > 2000) {
+      //   $("#col1").css("left", "-100px");
+      //   $("#col2").css("left", "1105px");
+      //   $("#col2").css("top", "50px");
+      // } else if (explore_result.clientWidth < 1980) {
+
+      // }     
+    }
+  </script>
+</head>
+
+<body>
+  <div id="explore-result"></div>
+</body>
+
+</html>
